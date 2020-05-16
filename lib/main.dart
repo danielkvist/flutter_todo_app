@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
-import 'task.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart' as path_provider;
+import 'package:uuid/uuid.dart';
+import 'models/task.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Hive initialization
+  final appDocumentDir = await path_provider.getApplicationDocumentsDirectory();
+  Hive.init(appDocumentDir.path);
+  Hive.registerAdapter(TaskAdapter());
+
   runApp(TodoApp());
 }
 
@@ -14,8 +25,27 @@ class TodoApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.purple,
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        canvasColor: Colors.transparent,
       ),
-      home: TodoList(),
+      home: FutureBuilder(
+        future: Hive.openBox('flutter_tasks'),
+        builder: (BuildContext context, AsyncSnapshot snapshot) {
+          // Check if box is open
+          if (snapshot.connectionState == ConnectionState.done) {
+            // Check if operation had errors
+            if (snapshot.hasError) {
+              return Text(snapshot.error.toString());
+            } else {
+              return TodoList();
+            }
+          } else {
+            // Show an empty Scaffold while box is opening
+            return Scaffold(
+              backgroundColor: Colors.white,
+            );
+          }
+        },
+      ),
     );
   }
 }
@@ -26,13 +56,14 @@ class TodoList extends StatefulWidget {
 }
 
 class _TodoListState extends State<TodoList> {
-  List<Task> _tasks = [];
+  var uuid = Uuid();
+  final tasksBox = Hive.box('flutter_tasks');
 
   void _addTask(String text) {
     if (text.length > 1) {
-      setState(() {
-        _tasks.add(Task(text));
-      });
+      final task = Task(uuid.v4(), text);
+      final tasksBox = Hive.box('flutter_tasks');
+      tasksBox.put(task.id, task);
     }
   }
 
@@ -40,18 +71,19 @@ class _TodoListState extends State<TodoList> {
     showModalBottomSheet<void>(
       context: context,
       builder: (BuildContext context) {
-        return AnimatedPadding(
+        return AnimatedContainer(
           padding: MediaQuery.of(context).viewInsets,
           duration: const Duration(milliseconds: 100),
           curve: Curves.decelerate,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(15.0),
+              topRight: Radius.circular(15.0),
+            ),
+          ),
           child: Container(
             height: 100,
-            decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(15),
-                  topRight: Radius.circular(15),
-                )),
             child: Padding(
               padding: EdgeInsets.all(15),
               child: TextField(
@@ -76,6 +108,7 @@ class _TodoListState extends State<TodoList> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
           'Todo',
@@ -84,22 +117,41 @@ class _TodoListState extends State<TodoList> {
           ),
         ),
       ),
-      body: ListView.separated(
-        itemCount: _tasks.length,
-        separatorBuilder: (BuildContext context, int index) => const Divider(),
-        itemBuilder: (BuildContext context, int index) {
-          return ListTile(
-            leading: Checkbox(
-              value: _tasks[index].done,
-            ),
-            title: Text(
-              _tasks[index].text,
-              style: TextStyle(
-                fontWeight: FontWeight.w300,
+      body: ValueListenableBuilder(
+        valueListenable: tasksBox.listenable(),
+        builder: (context, box, widget) => ListView.separated(
+          itemCount: tasksBox.length,
+          separatorBuilder: (context, index) {
+            final task = tasksBox.getAt(index) as Task;
+            return Visibility(
+              visible: !task.done,
+              child: Divider(),
+            );
+          },
+          itemBuilder: (BuildContext context, int index) {
+            final task = tasksBox.getAt(index) as Task;
+
+            return Visibility(
+              visible: !task.done,
+              replacement: Container(),
+              child: ListTile(
+                leading: Checkbox(
+                  value: task.done,
+                  onChanged: (value) {
+                    task.done = value;
+                    tasksBox.put(task.id, task);
+                  },
+                ),
+                title: Text(
+                  task.text,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showModal,
@@ -110,5 +162,12 @@ class _TodoListState extends State<TodoList> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Clean up Hive when app is closed
+    Hive.close();
+    super.dispose();
   }
 }

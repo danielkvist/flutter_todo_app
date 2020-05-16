@@ -1,14 +1,17 @@
-import 'package:uuid/uuid.dart';
+import 'package:hive/hive.dart';
 
+part 'task.g.dart';
+
+@HiveType(typeId: 1)
 class Task {
+  @HiveField(0)
   String _id;
+  @HiveField(1)
   String _text;
+  @HiveField(2)
   bool _done = false;
 
-  Task(String text) {
-    this._id = Uuid().v4().toString();
-    this._text = text;
-  }
+  Task(this._id, this._text);
 
   // Getter
   String get id => this._id;
