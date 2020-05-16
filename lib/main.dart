@@ -90,7 +90,7 @@ class _TodoListState extends State<TodoList> {
                 autofocus: true,
                 autocorrect: true,
                 controller: TextEditingController(
-                  text: existingTask.text,
+                  text: existingTask != null ? existingTask.text : '',
                 ),
                 decoration: InputDecoration(
                   border: OutlineInputBorder(),
