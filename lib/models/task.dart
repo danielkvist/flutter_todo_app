@@ -19,6 +19,10 @@ class Task {
   bool get done => this._done;
 
   // Setters
+  set text(String text) {
+    this._text = text;
+  }
+
   set done(bool done) {
     this._done = done;
   }

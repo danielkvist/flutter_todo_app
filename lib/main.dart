@@ -56,18 +56,18 @@ class TodoList extends StatefulWidget {
 }
 
 class _TodoListState extends State<TodoList> {
-  var uuid = Uuid();
-  final tasksBox = Hive.box('flutter_tasks');
+  var _uuid = Uuid();
+  final _tasksBox = Hive.box('flutter_tasks');
 
   void _addTask(String text) {
     if (text.length > 1) {
-      final task = Task(uuid.v4(), text);
+      final task = Task(_uuid.v4(), text);
       final tasksBox = Hive.box('flutter_tasks');
       tasksBox.put(task.id, task);
     }
   }
 
-  void _showModal() {
+  void _showModal(Task existingTask) {
     showModalBottomSheet<void>(
       context: context,
       builder: (BuildContext context) {
@@ -89,12 +89,21 @@ class _TodoListState extends State<TodoList> {
               child: TextField(
                 autofocus: true,
                 autocorrect: true,
+                controller: TextEditingController(
+                  text: existingTask.text,
+                ),
                 decoration: InputDecoration(
                   border: OutlineInputBorder(),
                   labelText: 'Task',
                 ),
                 onSubmitted: (value) {
-                  _addTask(value);
+                  if (existingTask == null) {
+                    _addTask(value);
+                  } else if (existingTask != null && value.length > 1) {
+                    existingTask.text = value;
+                    _tasksBox.put(existingTask.id, existingTask);
+                  }
+
                   Navigator.pop(context);
                 },
               ),
@@ -118,34 +127,53 @@ class _TodoListState extends State<TodoList> {
         ),
       ),
       body: ValueListenableBuilder(
-        valueListenable: tasksBox.listenable(),
+        valueListenable: _tasksBox.listenable(),
         builder: (context, box, widget) => ListView.separated(
-          itemCount: tasksBox.length,
+          itemCount: _tasksBox.length,
           separatorBuilder: (context, index) {
-            final task = tasksBox.getAt(index) as Task;
+            final task = _tasksBox.getAt(index) as Task;
             return Visibility(
               visible: !task.done,
               child: Divider(),
             );
           },
           itemBuilder: (BuildContext context, int index) {
-            final task = tasksBox.getAt(index) as Task;
+            final task = _tasksBox.getAt(index) as Task;
 
             return Visibility(
               visible: !task.done,
               replacement: Container(),
-              child: ListTile(
-                leading: Checkbox(
-                  value: task.done,
-                  onChanged: (value) {
-                    task.done = value;
-                    tasksBox.put(task.id, task);
-                  },
+              child: Dismissible(
+                key: Key(task.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  color: Colors.red[500],
+                  child: Padding(
+                    padding: EdgeInsets.only(right: 9.0),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Icon(
+                        Icons.delete,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
-                title: Text(
-                  task.text,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w300,
+                onDismissed: (direction) => {_tasksBox.delete(task.id)},
+                child: ListTile(
+                  onLongPress: () => {_showModal(task)},
+                  leading: Checkbox(
+                    value: task.done,
+                    onChanged: (value) {
+                      task.done = value;
+                      _tasksBox.put(task.id, task);
+                    },
+                  ),
+                  title: Text(
+                    task.text,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w300,
+                    ),
                   ),
                 ),
               ),
@@ -154,7 +182,7 @@ class _TodoListState extends State<TodoList> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showModal,
+        onPressed: () => {_showModal(null)},
         tooltip: 'Add Task',
         child: Icon(
           Icons.add,
