@@ -46,7 +46,6 @@ class _BottomSheetFormState extends State<BottomSheetForm> {
           padding: EdgeInsets.all(15),
           child: TextField(
             autofocus: true,
-            autocorrect: true,
             textCapitalization: TextCapitalization.sentences,
             controller: TextEditingController(
               text: widget._task != null ? widget._task.text : '',

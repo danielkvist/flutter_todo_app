@@ -90,15 +90,8 @@ class _TodoListState extends State<TodoList> {
       ),
       body: ValueListenableBuilder(
         valueListenable: _tasksBox.listenable(),
-        builder: (context, box, widget) => ListView.separated(
+        builder: (context, box, widget) => ListView.builder(
           itemCount: _tasksBox.length,
-          separatorBuilder: (context, index) {
-            final task = _tasksBox.getAt(index) as Task;
-            return Visibility(
-              visible: !task.done,
-              child: Divider(),
-            );
-          },
           itemBuilder: (BuildContext context, int index) {
             final task = _tasksBox.getAt(index) as Task;
 
@@ -127,12 +120,12 @@ class _TodoListState extends State<TodoList> {
                   leading: Checkbox(
                     value: task.done,
                     onChanged: (value) {
-                      task.done = value;
-                      _tasksBox.put(task.id, task);
-
                       if (value) {
                         _playBell();
                       }
+
+                      task.done = value;
+                      _tasksBox.put(task.id, task);
                     },
                   ),
                   title: Text(
