@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
-import 'package:uuid/uuid.dart';
+import 'widgets/BottomSheetForm.dart';
 import 'models/task.dart';
 
 void main() async {
@@ -56,59 +56,14 @@ class TodoList extends StatefulWidget {
 }
 
 class _TodoListState extends State<TodoList> {
-  var _uuid = Uuid();
   final _tasksBox = Hive.box('flutter_tasks');
-
-  void _addTask(String text) {
-    if (text.length > 1) {
-      final task = Task(_uuid.v4(), text);
-      final tasksBox = Hive.box('flutter_tasks');
-      tasksBox.put(task.id, task);
-    }
-  }
 
   void _showModal(Task existingTask) {
     showModalBottomSheet<void>(
       context: context,
       builder: (BuildContext context) {
-        return AnimatedContainer(
-          padding: MediaQuery.of(context).viewInsets,
-          duration: const Duration(milliseconds: 100),
-          curve: Curves.decelerate,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(15.0),
-              topRight: Radius.circular(15.0),
-            ),
-          ),
-          child: Container(
-            height: 100,
-            child: Padding(
-              padding: EdgeInsets.all(15),
-              child: TextField(
-                autofocus: true,
-                autocorrect: true,
-                controller: TextEditingController(
-                  text: existingTask != null ? existingTask.text : '',
-                ),
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'Task',
-                ),
-                onSubmitted: (value) {
-                  if (existingTask == null) {
-                    _addTask(value);
-                  } else if (existingTask != null && value.length > 1) {
-                    existingTask.text = value;
-                    _tasksBox.put(existingTask.id, existingTask);
-                  }
-
-                  Navigator.pop(context);
-                },
-              ),
-            ),
-          ),
+        return BottomSheetForm(
+          existingTask: existingTask,
         );
       },
     );
