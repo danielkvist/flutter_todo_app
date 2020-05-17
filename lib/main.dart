@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
+import 'package:audioplayers/audio_cache.dart';
 import 'widgets/BottomSheetForm.dart';
 import 'models/task.dart';
 
@@ -57,6 +58,7 @@ class TodoList extends StatefulWidget {
 
 class _TodoListState extends State<TodoList> {
   final _tasksBox = Hive.box('flutter_tasks');
+  final player = AudioCache();
 
   void _showModal(Task existingTask) {
     showModalBottomSheet<void>(
@@ -69,11 +71,16 @@ class _TodoListState extends State<TodoList> {
     );
   }
 
+  void _playBell() {
+    player.play('bell.wav');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        centerTitle: true,
         title: Text(
           'Todo',
           style: TextStyle(
@@ -122,6 +129,10 @@ class _TodoListState extends State<TodoList> {
                     onChanged: (value) {
                       task.done = value;
                       _tasksBox.put(task.id, task);
+
+                      if (value) {
+                        _playBell();
+                      }
                     },
                   ),
                   title: Text(
